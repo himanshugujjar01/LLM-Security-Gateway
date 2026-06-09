@@ -3,8 +3,10 @@ from pydantic import BaseModel
 
 from app.security.pii_detector import detect_and_redact
 from app.security.prompt_injection import detect_prompt_injection
+from app.middleware.rate_limiter import RateLimiterMiddleware
 
 app = FastAPI()
+app.add_middleware(RateLimiterMiddleware)
 
 class ChatRequest(BaseModel):
     message: str
