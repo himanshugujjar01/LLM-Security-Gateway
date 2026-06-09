@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from app.security.pii_detector import detect_and_redact
+from app.security.prompt_injection import detect_prompt_injection
 
 app = FastAPI()
 
@@ -16,6 +17,13 @@ def home():
 
 @app.post("/chat")
 def chat(request: ChatRequest):
+
+    if detect_prompt_injection(request.message):
+        return {
+            "status": "blocked",
+            "reason": "Prompt Injection Attempt Detected"
+        }
+
     cleaned_message = detect_and_redact(request.message)
 
     return {
