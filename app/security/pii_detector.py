@@ -1,18 +1,37 @@
-from presidio_analyzer import AnalyzerEngine
-from presidio_anonymizer import AnonymizerEngine
+import re
 
-analyzer = AnalyzerEngine()
-anonymizer = AnonymizerEngine()
+def detect_and_redact(text: str):
+    redacted = text
 
-def detect_and_redact(text):
-    results = analyzer.analyze(
-        text=text,
-        language="en"
+    # Email
+    redacted = re.sub(
+        r'[\w\.-]+@[\w\.-]+\.\w+',
+        '[EMAIL]',
+        redacted
     )
 
-    anonymized = anonymizer.anonymize(
-        text=text,
-        analyzer_results=results
+    # Phone Number (10 digits)
+    redacted = re.sub(
+        r'\b\d{10}\b',
+        '[PHONE]',
+        redacted
     )
 
-    return anonymized.text
+    # Aadhaar Number (12 digits)
+    redacted = re.sub(
+        r'\b\d{12}\b',
+        '[AADHAAR]',
+        redacted
+    )
+
+    # Credit Card (16 digits)
+    redacted = re.sub(
+        r'\b\d{16}\b',
+        '[CREDIT_CARD]',
+        redacted
+    )
+
+    return {
+        "original": text,
+        "redacted": redacted
+    }
