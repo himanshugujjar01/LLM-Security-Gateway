@@ -1,0 +1,6 @@
+2026-06-10 12:25:56,006 - WARNING - Prompt Injection Attempt: ignore previous instructions
+2026-06-10 12:29:48,045 - WARNING - Prompt Injection Attempt: ignore previous instructions
+2026-06-10 12:30:13,692 - WARNING - PII Detected: my email is test@gmail.com
+2026-06-10 12:30:13,692 - INFO - Request Processed Successfully
+2026-06-10 13:06:45,773 - WARNING - PII Detected: My email is test@gmail.com and phone is 9876543210
+2026-06-10 13:06:45,774 - INFO - Request Processed Successfully

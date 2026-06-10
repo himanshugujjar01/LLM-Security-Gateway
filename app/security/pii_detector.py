@@ -31,7 +31,4 @@ def detect_and_redact(text: str):
         redacted
     )
 
-    return {
-        "original": text,
-        "redacted": redacted
-    }
+    return redacted
