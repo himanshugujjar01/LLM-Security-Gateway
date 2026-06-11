@@ -158,7 +158,36 @@ Response:
   "prompt_injections": 2
 }
 ```
+ Automated Incident Containment
 
+### Features
+- Detects prompt injection attacks
+- Automatically triggers containment action
+- Simulates host isolation
+- Logs security incidents
+
+### Example Response
+
+{
+  "status": "blocked",
+  "reason": "Prompt Injection Attempt Detected",
+  "containment": {
+    "status": "isolated",
+    "hostname": "PC-001",
+    "action": "network containment executed"
+  }
+}
+
+## Threat Intelligence Detection
+
+The gateway checks incoming prompts against a threat intelligence feed containing known malicious keywords.
+
+### Current Indicators
+- malware
+- ransomware
+- keylogger
+- steal credentials
+- bypass security
 ---
 
 ## Security Workflow
