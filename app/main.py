@@ -10,6 +10,8 @@ from app.services.logger import logger
 from app.dashboard.dashboard import router as dashboard_router
 from app.routes.dashboard import router as dashboard_router
 from app.security.output_filter import filter_response
+from app.services.containment import isolate_host
+from app.security.threat_intel import check_threat_intel
 
 app = FastAPI()
 app.include_router(dashboard_router, prefix="/dashboard")
@@ -19,20 +21,14 @@ app.include_router(dashboard_router)
 class ChatRequest(BaseModel):
     message: str
 
-@app.get("/")
-def home():
-    return {
-        "message": "Enterprise LLM Security Gateway Running"
-    }
-
 @app.post("/chat")
 def chat(
     request: ChatRequest,
     api_key: str = Depends(verify_api_key)
 ):
 
+    # Prompt Injection Detection
     if detect_prompt_injection(request.message):
-
         logger.warning(
             f"Prompt Injection Attempt: {request.message}"
         )
@@ -42,17 +38,29 @@ def chat(
             "reason": "Prompt Injection Attempt Detected"
         }
 
-    cleaned_message = detect_and_redact(request.message)
-    safe_message = filter_response(cleaned_message)
+    # Threat Intelligence Detection
+    threat_detected, indicator = check_threat_intel(request.message)
 
-    if cleaned_message != request.message:
+    if threat_detected:
         logger.warning(
-            f"PII Detected: {request.message}"
+            f"Threat Intelligence Match: {indicator}"
         )
+
+        return {
+            "status": "blocked",
+            "reason": "Threat Intelligence Match",
+            "indicator": indicator
+        }
+
+    # PII Detection
+    cleaned_message = detect_and_redact(request.message)
+
+    # Output Filtering
+    safe_message = filter_response(cleaned_message)
 
     logger.info("Request Processed Successfully")
 
     return {
-    "original": request.message,
-    "redacted": safe_message
-}
+        "original": request.message,
+        "redacted": safe_message
+    }
