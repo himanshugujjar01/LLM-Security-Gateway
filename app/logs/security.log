@@ -8,3 +8,17 @@
 2026-06-11 12:59:45,537 - WARNING - HOST ISOLATED: PC-001
 2026-06-11 13:08:40,876 - WARNING - Threat Intelligence Match: ransomware
 2026-06-11 13:09:16,653 - INFO - Request Processed Successfully
+2026-06-12 18:24:53,083 - INFO - Request Processed Successfully
+2026-06-12 18:38:26,055 - INFO - Request Processed Successfully
+2026-06-12 18:38:46,358 - CRITICAL - SECURITY ALERT | PII_DETECTED | My phone number is 9876543210
+2026-06-12 18:38:46,358 - WARNING - PII Detected: My phone number is 9876543210
+2026-06-12 18:38:46,359 - INFO - Request Processed Successfully
+2026-06-12 18:40:48,985 - CRITICAL - SECURITY ALERT | PII_DETECTED | My Aadhaar number is 123456789012
+2026-06-12 18:40:48,985 - WARNING - PII Detected: My Aadhaar number is 123456789012
+2026-06-12 18:40:48,985 - INFO - Request Processed Successfully
+2026-06-12 18:51:49,164 - CRITICAL - SECURITY ALERT | PII_DETECTED | My phone number is 9876543210
+2026-06-12 18:51:49,164 - WARNING - PII Detected: My phone number is 9876543210
+2026-06-12 18:51:49,164 - INFO - Request Processed Successfully
+2026-06-12 18:51:51,134 - CRITICAL - SECURITY ALERT | PII_DETECTED | My phone number is 9876543210
+2026-06-12 18:51:51,134 - WARNING - PII Detected: My phone number is 9876543210
+2026-06-12 18:51:51,134 - INFO - Request Processed Successfully

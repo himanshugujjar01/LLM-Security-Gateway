@@ -1,6 +1,6 @@
 import re
 
-def detect_and_redact(text: str):
+def redact_pii(text):
     redacted = text
 
     # Email
@@ -31,4 +31,7 @@ def detect_and_redact(text: str):
         redacted
     )
 
-    return redacted
+    return {
+        "original": text,
+        "redacted": redacted
+    }
