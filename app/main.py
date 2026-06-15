@@ -8,16 +8,18 @@ from fastapi import Depends
 from app.auth.api_key import verify_api_key
 from app.services.logger import logger
 from app.dashboard.dashboard import router as dashboard_router
-from app.routes.dashboard import router as dashboard_router
 from app.security.output_filter import filter_response
 from app.services.containment import isolate_host
 from app.security.threat_intel import check_threat_intel
 from app.services.alert_manager import send_alert
+from app.dashboard.metrics import router as metrics_router
+from app.dashboard.metrics import metrics
 
 app = FastAPI()
 app.include_router(dashboard_router, prefix="/dashboard")
 app.add_middleware(RateLimiterMiddleware)
 app.include_router(dashboard_router)
+app.include_router(metrics_router)
 
 class ChatRequest(BaseModel):
     message: str
@@ -28,8 +30,13 @@ def chat(
     api_key: str = Depends(verify_api_key)
 ):
 
+    metrics["total_requests"] += 1
+
     # Prompt Injection Detection
     if detect_prompt_injection(request.message):
+
+        metrics["prompt_injections"] += 1
+        metrics["blocked_requests"] += 1
 
         send_alert(
             "PROMPT_INJECTION",
@@ -52,6 +59,9 @@ def chat(
 
     if threat_detected:
 
+        metrics["threat_matches"] += 1
+        metrics["blocked_requests"] += 1
+
         send_alert(
             "THREAT_INTEL_MATCH",
             indicator
@@ -68,13 +78,15 @@ def chat(
         }
 
     # PII Detection
-   # PII Detection
     cleaned_message = redact_pii(request.message)
 
     print(type(cleaned_message))
     print(cleaned_message)
 
     if cleaned_message["original"] != cleaned_message["redacted"]:
+
+        metrics["pii_detected"] += 1
+
         send_alert(
             "PII_DETECTED",
             request.message
@@ -86,11 +98,13 @@ def chat(
 
     # Output Filtering
     safe_message = filter_response(
-    cleaned_message["redacted"]
-)
+        cleaned_message["redacted"]
+    )
+
     logger.info("Request Processed Successfully")
 
     return {
-        "original": request.message,
-        "redacted": safe_message
+        "original": cleaned_message["original"],
+        "redacted": cleaned_message["redacted"],
+        "safe_message": safe_message
     }
