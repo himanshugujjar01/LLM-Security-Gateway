@@ -14,6 +14,10 @@ from app.security.threat_intel import check_threat_intel
 from app.services.alert_manager import send_alert
 from app.dashboard.metrics import router as metrics_router
 from app.dashboard.metrics import metrics
+from app.security.anonymizer import (
+    anonymize_text,
+    deanonymize_text
+)
 
 app = FastAPI()
 app.include_router(dashboard_router, prefix="/dashboard")
@@ -79,6 +83,9 @@ def chat(
 
     # PII Detection
     cleaned_message = redact_pii(request.message)
+    anonymized_text, mapping = anonymize_text(
+    cleaned_message["redacted"]
+)
 
     print(type(cleaned_message))
     print(cleaned_message)
@@ -98,13 +105,16 @@ def chat(
 
     # Output Filtering
     safe_message = filter_response(
-        cleaned_message["redacted"]
-    )
+    anonymized_text
+)
+    llm_response = f"LLM received: {safe_message}"
+    final_response = deanonymize_text(
+    llm_response,
+    mapping
+)
 
     logger.info("Request Processed Successfully")
 
     return {
-        "original": cleaned_message["original"],
-        "redacted": cleaned_message["redacted"],
-        "safe_message": safe_message
-    }
+    "response": final_response
+}
