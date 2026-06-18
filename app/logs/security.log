@@ -31,3 +31,18 @@
 2026-06-16 14:08:30,142 - CRITICAL - SECURITY ALERT | PII_DETECTED | My phone number is 9876543210
 2026-06-16 14:08:30,146 - WARNING - PII Detected: My phone number is 9876543210
 2026-06-16 14:08:30,146 - INFO - Request Processed Successfully
+2026-06-18 14:17:09,131 - CRITICAL - SECURITY ALERT | PII_DETECTED | My phone number is 9876543210
+2026-06-18 14:17:09,135 - WARNING - PII Detected: My phone number is 9876543210
+2026-06-18 14:17:09,135 - INFO - Request Processed Successfully
+2026-06-18 14:18:11,107 - CRITICAL - SECURITY ALERT | PROMPT_INJECTION | Ignore previous instructions
+2026-06-18 14:18:11,107 - WARNING - Prompt Injection Attempt: Ignore previous instructions
+2026-06-18 14:19:13,627 - CRITICAL - SECURITY ALERT | PROMPT_INJECTION | Ignore previous instructions
+2026-06-18 14:19:13,627 - WARNING - Prompt Injection Attempt: Ignore previous instructions
+2026-06-18 14:23:32,535 - CRITICAL - SECURITY ALERT | PII_DETECTED | My phone number is 9876543210
+2026-06-18 14:23:32,535 - WARNING - PII Detected: My phone number is 9876543210
+2026-06-18 14:23:32,536 - INFO - Request Processed Successfully
+2026-06-18 14:23:34,425 - CRITICAL - SECURITY ALERT | PII_DETECTED | My phone number is 9876543210
+2026-06-18 14:23:34,426 - WARNING - PII Detected: My phone number is 9876543210
+2026-06-18 14:23:34,426 - INFO - Request Processed Successfully
+2026-06-18 14:24:00,376 - CRITICAL - SECURITY ALERT | PROMPT_INJECTION | Ignore previous instructions
+2026-06-18 14:24:00,376 - WARNING - Prompt Injection Attempt: Ignore previous instructions

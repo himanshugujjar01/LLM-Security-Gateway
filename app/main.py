@@ -18,12 +18,16 @@ from app.security.anonymizer import (
     anonymize_text,
     deanonymize_text
 )
+from app.dashboard.log_analyzer import router as log_router
+from app.dashboard.security_dashboard import router as security_dashboard_router
 
 app = FastAPI()
 app.include_router(dashboard_router, prefix="/dashboard")
 app.add_middleware(RateLimiterMiddleware)
 app.include_router(dashboard_router)
 app.include_router(metrics_router)
+app.include_router(log_router)
+app.include_router(security_dashboard_router)
 
 class ChatRequest(BaseModel):
     message: str
