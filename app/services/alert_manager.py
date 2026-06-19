@@ -1,9 +1,15 @@
 from app.services.logger import logger
+from app.dashboard.metrics import metrics
+from app.dashboard.event_history import security_events
 
-def send_alert(alert_type: str, details: str):
-    logger.critical(
-        f"SECURITY ALERT | {alert_type} | {details}"
-    )
+def send_alert(alert_type, details):
+
+    security_events.append({
+        "event_type": alert_type,
+        "details": details
+    })
+
+    print(f"[ALERT] {alert_type}: {details}")
 
     return {
         "alert": "generated",

@@ -20,6 +20,8 @@ from app.security.anonymizer import (
 )
 from app.dashboard.log_analyzer import router as log_router
 from app.dashboard.security_dashboard import router as security_dashboard_router
+from app.dashboard.report_export import router as report_router
+from app.dashboard.event_history import router as history_router
 
 app = FastAPI()
 app.include_router(dashboard_router, prefix="/dashboard")
@@ -28,6 +30,8 @@ app.include_router(dashboard_router)
 app.include_router(metrics_router)
 app.include_router(log_router)
 app.include_router(security_dashboard_router)
+app.include_router(report_router)
+app.include_router(history_router)
 
 class ChatRequest(BaseModel):
     message: str

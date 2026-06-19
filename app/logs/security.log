@@ -46,3 +46,12 @@
 2026-06-18 14:23:34,426 - INFO - Request Processed Successfully
 2026-06-18 14:24:00,376 - CRITICAL - SECURITY ALERT | PROMPT_INJECTION | Ignore previous instructions
 2026-06-18 14:24:00,376 - WARNING - Prompt Injection Attempt: Ignore previous instructions
+2026-06-19 16:28:19,544 - INFO - Request Processed Successfully
+2026-06-19 16:28:51,048 - INFO - Request Processed Successfully
+2026-06-19 16:30:04,123 - CRITICAL - SECURITY ALERT | THREAT_INTEL_MATCH | ransomware
+2026-06-19 16:30:04,123 - WARNING - Threat Intelligence Match: ransomware
+2026-06-19 16:33:26,064 - CRITICAL - SECURITY ALERT | THREAT_INTEL_MATCH | ransomware
+2026-06-19 16:33:26,065 - WARNING - Threat Intelligence Match: ransomware
+2026-06-19 16:50:28,656 - WARNING - Prompt Injection Attempt: Ignore previous instructions
+2026-06-19 16:50:50,781 - WARNING - PII Detected: My phone number is 9876543210
+2026-06-19 16:50:50,782 - INFO - Request Processed Successfully
