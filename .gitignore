@@ -1,0 +1,58 @@
+# -----------------------------
+# Python cache / compiled files
+# -----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# -----------------------------
+# Virtual environments
+# -----------------------------
+venv/
+env/
+.venv/
+
+# -----------------------------
+# Environment / secrets
+# -----------------------------
+.env
+.env.*
+*.env
+
+# -----------------------------
+# Logs
+# -----------------------------
+app/logs/security.log
+*.log
+
+# -----------------------------
+# Pytest / coverage / test cache
+# -----------------------------
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# -----------------------------
+# VS Code / editor files
+# -----------------------------
+.vscode/
+.idea/
+
+# -----------------------------
+# OS generated files
+# -----------------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------------
+# Build / packaging files
+# -----------------------------
+build/
+dist/
+*.egg-info/
+
+# -----------------------------
+# Jupyter / notebook checkpoints
+# -----------------------------
+.ipynb_checkpoints/
