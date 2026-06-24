@@ -1,10 +1,9 @@
 from app.services.logger import logger
 
-def isolate_host(hostname: str):
-    logger.warning(f"HOST ISOLATED: {hostname}")
-
+def isolate_host(host_name):
+    print(f"[CONTAINMENT] Host isolated: {host_name}")
     return {
         "status": "isolated",
-        "hostname": "PC-001",
-        "action": "network containment executed"
+        "host": host_name,
+        "action": "Host isolated successfully"
     }

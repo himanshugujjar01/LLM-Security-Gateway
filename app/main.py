@@ -22,6 +22,8 @@ from app.dashboard.log_analyzer import router as log_router
 from app.dashboard.security_dashboard import router as security_dashboard_router
 from app.dashboard.report_export import router as report_router
 from app.dashboard.event_history import router as history_router
+from app.services.db_logger import log_prompt_to_db
+from app.security.presidio_detector import presidio_redact
 
 app = FastAPI()
 app.include_router(dashboard_router, prefix="/dashboard")
@@ -59,6 +61,14 @@ def chat(
             f"Prompt Injection Attempt: {request.message}"
         )
 
+        log_prompt_to_db(
+    user_message=request.message,
+    redacted_message="",
+    response_text="Blocked by prompt injection detection",
+    status="blocked",
+    detection_type="PROMPT_INJECTION"
+)
+
         return {
             "status": "blocked",
             "reason": "Prompt Injection Attempt Detected"
@@ -83,23 +93,35 @@ def chat(
             f"Threat Intelligence Match: {indicator}"
         )
 
+        log_prompt_to_db(
+    user_message=request.message,
+    redacted_message="",
+    response_text="Blocked by threat intelligence",
+    status="blocked",
+    detection_type="THREAT_INTEL_MATCH"
+)
+
         return {
             "status": "blocked",
             "reason": "Threat Intelligence Match",
             "indicator": indicator
         }
 
-    # PII Detection
-    cleaned_message = redact_pii(request.message)
+        # PII Detection using Microsoft Presidio
+    cleaned_message = presidio_redact(request.message)
+
+    # Fallback to regex redaction if Presidio finds nothing
+    if cleaned_message["original"] == cleaned_message["redacted"]:
+        cleaned_message = redact_pii(request.message)
+
     anonymized_text, mapping = anonymize_text(
-    cleaned_message["redacted"]
-)
+        cleaned_message["redacted"]
+    )
 
     print(type(cleaned_message))
     print(cleaned_message)
 
     if cleaned_message["original"] != cleaned_message["redacted"]:
-
         metrics["pii_detected"] += 1
 
         send_alert(
@@ -113,16 +135,27 @@ def chat(
 
     # Output Filtering
     safe_message = filter_response(
-    anonymized_text
-)
+        anonymized_text
+    )
+
     llm_response = f"LLM received: {safe_message}"
+
     final_response = deanonymize_text(
-    llm_response,
-    mapping
-)
+        llm_response,
+        mapping
+    )
+
+    # PostgreSQL Logging
+    log_prompt_to_db(
+        user_message=request.message,
+        redacted_message=cleaned_message["redacted"],
+        response_text=final_response,
+        status="allowed",
+        detection_type="PII_CHECK"
+    )
 
     logger.info("Request Processed Successfully")
 
     return {
-    "response": final_response
-}
+        "response": final_response
+    }
