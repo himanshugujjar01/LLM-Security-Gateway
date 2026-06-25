@@ -1,4 +1,4 @@
 Event Type,Count
-Prompt Injections,0
-PII Detections,0
+Prompt Injections,1
+PII Detections,1
 Threat Matches,1
