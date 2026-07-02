@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from app.dashboard.metrics import metrics
+from datetime import datetime
 
 router = APIRouter()
 
@@ -71,8 +72,7 @@ def get_soc_recommendations(risk_level: str, pii_detected: int, threat_matches: 
     return recommendations
 
 
-@router.get("/soc-dashboard")
-def soc_dashboard():
+def build_soc_summary():
     total_requests = metrics.get("total_requests", 0)
     blocked_requests = metrics.get("blocked_requests", 0)
     allowed_requests = total_requests - blocked_requests
@@ -107,6 +107,8 @@ def soc_dashboard():
     )
 
     return {
+        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+
         "dashboard_name": "SOC Compliance Dashboard",
         "gateway_status": "ACTIVE",
 
@@ -141,4 +143,73 @@ def soc_dashboard():
         },
 
         "soc_recommendations": recommendations
+    }
+
+
+@router.get("/soc-dashboard")
+def soc_dashboard():
+    return build_soc_summary()
+
+
+@router.get("/soc-event-summary")
+def soc_event_summary():
+    prompt_injections = metrics.get("prompt_injections", 0)
+    pii_detected = metrics.get("pii_detected", 0)
+    threat_matches = metrics.get("threat_matches", 0)
+    unsafe_outputs = metrics.get("unsafe_outputs", 0)
+
+    total_security_events = (
+        prompt_injections
+        + pii_detected
+        + threat_matches
+        + unsafe_outputs
+    )
+
+    return {
+        "summary_name": "SOC Event Summary",
+        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "total_security_events": total_security_events,
+
+        "events": {
+            "prompt_injection_events": prompt_injections,
+            "pii_detection_events": pii_detected,
+            "threat_intelligence_events": threat_matches,
+            "unsafe_output_events": unsafe_outputs
+        },
+
+        "soc_interpretation": {
+            "prompt_injection_events": "Attempts to manipulate the LLM instruction flow.",
+            "pii_detection_events": "Sensitive user data detected and redacted.",
+            "threat_intelligence_events": "Security-related suspicious keywords detected.",
+            "unsafe_output_events": "Generated response blocked by content safety filter."
+        }
+    }
+
+
+@router.get("/soc-compliance-report")
+def soc_compliance_report():
+    summary = build_soc_summary()
+
+    return {
+        "report_title": "LLM Security Gateway SOC Compliance Report",
+        "prepared_for": "Security Operations Review",
+        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+
+        "executive_summary": (
+            "The LLM Security Gateway is actively monitoring prompts, "
+            "detecting sensitive information, identifying security events, "
+            "and maintaining compliance visibility through audit logging."
+        ),
+
+        "soc_dashboard_data": summary,
+
+        "audit_readiness": {
+            "postgresql_logging": "AVAILABLE",
+            "security_metrics": "AVAILABLE",
+            "dashboard_visibility": "AVAILABLE",
+            "event_summary": "AVAILABLE",
+            "compliance_status": summary["security_overview"]["compliance_status"]
+        },
+
+        "final_status": "SOC dashboard and compliance monitoring are operational."
     }
