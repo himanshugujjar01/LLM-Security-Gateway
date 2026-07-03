@@ -25,6 +25,7 @@ from app.dashboard.security_dashboard import router as security_dashboard_router
 from app.dashboard.report_export import router as report_router
 from app.dashboard.event_history import router as history_router
 from app.dashboard.soc_dashboard import router as soc_dashboard_router
+from app.routes.rbac_routes import router as rbac_router
 
 
 app = FastAPI()
@@ -38,6 +39,7 @@ app.include_router(security_dashboard_router)
 app.include_router(report_router)
 app.include_router(history_router)
 app.include_router(soc_dashboard_router)
+app.include_router(rbac_router)
 
 
 class ChatRequest(BaseModel):
