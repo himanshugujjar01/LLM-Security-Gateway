@@ -8,7 +8,8 @@ metrics = {
     "prompt_injections": 0,
     "threat_matches": 0,
     "pii_detected": 0,
-    "unsafe_outputs": 0
+    "unsafe_outputs": 0,
+    "rbac_denied": 0
 }
 
 

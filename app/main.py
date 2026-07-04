@@ -26,6 +26,7 @@ from app.dashboard.report_export import router as report_router
 from app.dashboard.event_history import router as history_router
 from app.dashboard.soc_dashboard import router as soc_dashboard_router
 from app.routes.rbac_routes import router as rbac_router
+from app.auth.rbac import check_model_access
 
 
 app = FastAPI()
@@ -44,6 +45,7 @@ app.include_router(rbac_router)
 
 class ChatRequest(BaseModel):
     message: str
+    model_name: str = "general-llm"
 
 
 @app.post("/chat")
@@ -51,6 +53,34 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
     metrics["total_requests"] += 1
 
     verify_api_key(x_api_key)
+        # RBAC Model Access Check
+    rbac_result = check_model_access(
+        api_key=x_api_key,
+        requested_model=request.model_name
+    )
+
+    if not rbac_result["allowed"]:
+        metrics["blocked_requests"] += 1
+        metrics["rbac_denied"] = metrics.get("rbac_denied", 0) + 1
+
+        logger.warning(
+            f"RBAC Access Denied: {rbac_result['reason']} | Model: {request.model_name}"
+        )
+
+        log_prompt_to_db(
+            user_message=request.message,
+            redacted_message=request.message,
+            response_text=f"RBAC denied for model: {request.model_name}",
+            status="blocked",
+            detection_type="RBAC_DENIED"
+        )
+
+        return {
+            "status": "blocked",
+            "reason": "RBAC access denied",
+            "requested_model": request.model_name,
+            "details": rbac_result
+        }
 
     # 1. Prompt Injection Detection
     if detect_prompt_injection(request.message):
@@ -207,5 +237,6 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
     logger.info("Request Processed Successfully")
 
     return {
-        "response": final_response
-    }
+    "response": final_response,
+    "model_used": request.model_name
+}
