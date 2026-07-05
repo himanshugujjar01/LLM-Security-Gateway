@@ -130,6 +130,7 @@ def build_soc_summary():
             "pii_detected": pii_detected,
             "threat_matches": threat_matches,
             "unsafe_outputs": unsafe_outputs,
+            "rbac_denied": metrics.get("rbac_denied", 0)
             "pii_detection_rate_percent": pii_detection_rate
         },
 

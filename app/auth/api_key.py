@@ -1,11 +1,28 @@
-from fastapi import Header, HTTPException
+from fastapi import HTTPException
+from app.auth.rbac import API_KEY_USER_MAP
 
-API_KEY = "my-secret-key"
 
+def verify_api_key(api_key: str):
+    """
+    Verifies whether the provided API key is valid.
 
-def verify_api_key(x_api_key: str = Header(None)):
-    if x_api_key != API_KEY:
+    Now it supports all RBAC API keys:
+    - my-secret-key
+    - hr-secret-key
+    - finance-secret-key
+    - security-secret-key
+    """
+
+    if not api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="API key missing"
+        )
+
+    if api_key not in API_KEY_USER_MAP:
         raise HTTPException(
             status_code=401,
             detail="Invalid API Key"
         )
+
+    return True
