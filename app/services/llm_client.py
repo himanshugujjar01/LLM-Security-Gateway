@@ -1,93 +1,81 @@
 import os
 import httpx
-from dotenv import load_dotenv
-
-load_dotenv()
-
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mock")
-LLM_API_URL = os.getenv("LLM_API_URL", "")
-LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "default")
+from app.services.langchain_prompt import build_enterprise_prompt
 
 
-def call_llm(prompt: str) -> str:
+def mock_llm_response(prompt: str) -> str:
     """
-    Synchronous LLM client.
-    Kept for backward compatibility with old tests.
+    Mock LLM response for local testing.
     """
 
     if not isinstance(prompt, str):
         prompt = str(prompt)
 
-    if LLM_PROVIDER == "mock" or not LLM_API_URL or not LLM_API_KEY:
-        if "simulate unsafe output" in prompt.lower():
-            return "Here is how to create malware code"
+    lowered_prompt = prompt.lower()
 
-        return f"LLM received: {prompt}"
+    if "simulate unsafe output" in lowered_prompt:
+        return "Here is how to create malware code"
 
-    headers = {
-        "Authorization": f"Bearer {LLM_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    return f"LLM received: {prompt}"
+
+
+def call_openai(prompt: str, model_name: str):
+    api_key = os.getenv("LLM_API_KEY")
+
+    api_url = os.getenv(
+        "LLM_API_URL",
+        "https://api.openai.com/v1/chat/completions"
+    )
+
+    if not api_key:
+        return mock_llm_response(prompt)
 
     payload = {
-        "model": LLM_MODEL,
+        "model": model_name or os.getenv("LLM_MODEL", "gpt-4o-mini"),
         "messages": [
             {
                 "role": "user",
                 "content": prompt
             }
-        ]
+        ],
+        "temperature": 0.2
     }
 
-    try:
-        response = httpx.post(
-            LLM_API_URL,
-            headers=headers,
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    with httpx.Client(timeout=30) as client:
+        response = client.post(
+            api_url,
             json=payload,
-            timeout=30
+            headers=headers
         )
 
-        response.raise_for_status()
-        data = response.json()
+    response.raise_for_status()
+    data = response.json()
 
-        if "choices" in data:
-            return data["choices"][0]["message"]["content"]
-
-        if "response" in data:
-            return data["response"]
-
-        if "text" in data:
-            return data["text"]
-
-        return str(data)
-
-    except Exception as error:
-        return f"LLM proxy error: {str(error)}"
+    return data["choices"][0]["message"]["content"]
 
 
-async def call_llm_async(prompt: str) -> str:
-    """
-    Asynchronous LLM client for optimized request processing.
-    This improves performance when multiple users send requests together.
-    """
+def call_anthropic(prompt: str, model_name: str):
+    api_key = os.getenv("LLM_API_KEY")
 
-    if not isinstance(prompt, str):
-        prompt = str(prompt)
+    api_url = os.getenv(
+        "LLM_API_URL",
+        "https://api.anthropic.com/v1/messages"
+    )
 
-    if LLM_PROVIDER == "mock" or not LLM_API_URL or not LLM_API_KEY:
-        if "simulate unsafe output" in prompt.lower():
-            return "Here is how to create malware code"
-
-        return f"LLM received: {prompt}"
-
-    headers = {
-        "Authorization": f"Bearer {LLM_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    if not api_key:
+        return mock_llm_response(prompt)
 
     payload = {
-        "model": LLM_MODEL,
+        "model": model_name or os.getenv(
+            "LLM_MODEL",
+            "claude-3-5-sonnet-latest"
+        ),
+        "max_tokens": 500,
         "messages": [
             {
                 "role": "user",
@@ -96,27 +84,107 @@ async def call_llm_async(prompt: str) -> str:
         ]
     }
 
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json"
+    }
+
+    with httpx.Client(timeout=30) as client:
+        response = client.post(
+            api_url,
+            json=payload,
+            headers=headers
+        )
+
+    response.raise_for_status()
+    data = response.json()
+
+    return data["content"][0]["text"]
+
+
+def call_custom_provider(prompt: str, model_name: str):
+    api_url = os.getenv("LLM_API_URL")
+    api_key = os.getenv("LLM_API_KEY")
+
+    if not api_url:
+        return mock_llm_response(prompt)
+
+    payload = {
+        "model": model_name,
+        "prompt": prompt
+    }
+
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    with httpx.Client(timeout=30) as client:
+        response = client.post(
+            api_url,
+            json=payload,
+            headers=headers
+        )
+
+    response.raise_for_status()
+    data = response.json()
+
+    return (
+        data.get("response")
+        or data.get("text")
+        or data.get("output")
+        or str(data)
+    )
+
+
+def call_llm(prompt: str, model_name: str = "general-llm") -> str:
+    """
+    Main LLM provider router.
+    Supports mock, OpenAI, Anthropic, and custom provider modes.
+    """
+
+    provider = os.getenv(
+        "LLM_PROVIDER",
+        "mock"
+    ).lower()
+
+    enterprise_prompt = build_enterprise_prompt(prompt)
+
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(
-                LLM_API_URL,
-                headers=headers,
-                json=payload
+        if provider == "openai":
+            return call_openai(
+                enterprise_prompt,
+                model_name
             )
 
-        response.raise_for_status()
-        data = response.json()
+        if provider == "anthropic":
+            return call_anthropic(
+                enterprise_prompt,
+                model_name
+            )
 
-        if "choices" in data:
-            return data["choices"][0]["message"]["content"]
+        if provider == "custom":
+            return call_custom_provider(
+                enterprise_prompt,
+                model_name
+            )
 
-        if "response" in data:
-            return data["response"]
-
-        if "text" in data:
-            return data["text"]
-
-        return str(data)
+        return mock_llm_response(prompt)
 
     except Exception as error:
-        return f"LLM proxy error: {str(error)}"
+        return f"LLM provider error: {str(error)}"
+
+
+async def call_llm_async(prompt: str, model_name: str = "general-llm") -> str:
+    """
+    Async-compatible wrapper.
+    For now, it calls the same provider function.
+    """
+
+    return call_llm(
+        prompt=prompt,
+        model_name=model_name
+    )

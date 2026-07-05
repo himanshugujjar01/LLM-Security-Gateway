@@ -131,6 +131,11 @@ def build_soc_summary():
     "threat_matches": threat_matches,
     "unsafe_outputs": unsafe_outputs,
     "rbac_denied": metrics.get("rbac_denied", 0),
+    "advanced_prompt_injections": metrics.get("advanced_prompt_injections", 0),
+"phi_detected": metrics.get("phi_detected", 0),
+"semantic_cache_hits": metrics.get("semantic_cache_hits", 0),
+"semantic_cache_misses": metrics.get("semantic_cache_misses", 0),
+"real_llm_proxy_requests": metrics.get("real_llm_proxy_requests", 0),
     "pii_detection_rate_percent": pii_detection_rate
 },
 

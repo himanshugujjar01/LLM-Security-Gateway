@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-security-gateway-app
+  namespace: llm-security-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llm-security-gateway
+  template:
+    metadata:
+      labels:
+        app: llm-security-gateway
+    spec:
+      containers:
+        - name: llm-security-gateway
+          image: llm-security-gateway:v2
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://postgres:postgres123@postgres-service:5432/llm_gateway"
+            - name: LLM_PROVIDER
+              value: "mock"
+            - name: LLM_API_URL
+              value: ""
+            - name: LLM_API_KEY
+              value: ""
+            - name: LLM_MODEL
+              value: "default"
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: REDIS_PORT
+              value: "6379"

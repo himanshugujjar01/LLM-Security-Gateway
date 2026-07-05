@@ -2,20 +2,24 @@ from fastapi import FastAPI, Header
 from pydantic import BaseModel
 
 from app.auth.api_key import verify_api_key
+from app.auth.rbac import check_model_access
 from app.middleware.rate_limiter import RateLimiterMiddleware
 
 from app.security.pii_detector import redact_pii
 from app.security.presidio_detector import presidio_redact
 from app.security.prompt_injection import detect_prompt_injection
+from app.security.rebuff_guard import rebuff_style_check
 from app.security.threat_intel import check_threat_intel
 from app.security.output_filter import filter_response, check_response_safety
 from app.security.anonymizer import anonymize_text, deanonymize_text
 from app.security.custom_sensitive_detector import detect_custom_sensitive_data
+from app.security.phi_detector import detect_phi, redact_phi
 
 from app.services.logger import logger
 from app.services.alert_manager import send_alert
 from app.services.db_logger import log_prompt_to_db
-from app.services.llm_client import call_llm_async
+from app.services.llm_client import call_llm
+from app.services.semantic_cache import get_cached_response, set_cached_response
 
 from app.dashboard.dashboard import router as dashboard_router
 from app.dashboard.metrics import router as metrics_router
@@ -26,10 +30,13 @@ from app.dashboard.report_export import router as report_router
 from app.dashboard.event_history import router as history_router
 from app.dashboard.soc_dashboard import router as soc_dashboard_router
 from app.routes.rbac_routes import router as rbac_router
-from app.auth.rbac import check_model_access
 
 
-app = FastAPI()
+app = FastAPI(
+    title="LLM Security Gateway",
+    description="Enterprise LLM and GenAI Security Gateway",
+    version="1.0.0"
+)
 
 app.add_middleware(RateLimiterMiddleware)
 
@@ -49,11 +56,12 @@ class ChatRequest(BaseModel):
 
 
 @app.post("/chat")
-async def chat(request: ChatRequest, x_api_key: str = Header(None)):
+def chat(request: ChatRequest, x_api_key: str = Header(None)):
     metrics["total_requests"] += 1
 
     verify_api_key(x_api_key)
-        # RBAC Model Access Check
+
+    # RBAC model access check
     rbac_result = check_model_access(
         api_key=x_api_key,
         requested_model=request.model_name
@@ -82,12 +90,15 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
             "details": rbac_result
         }
 
-    # 1. Prompt Injection Detection
+    # Basic prompt injection detection
     if detect_prompt_injection(request.message):
         metrics["blocked_requests"] += 1
         metrics["prompt_injections"] += 1
 
-        send_alert("PROMPT_INJECTION", request.message)
+        send_alert(
+            "PROMPT_INJECTION",
+            request.message
+        )
 
         logger.warning(
             f"Prompt Injection Attempt: {request.message}"
@@ -106,14 +117,50 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
             "reason": "Prompt Injection Attempt Detected"
         }
 
-    # 2. Threat Intelligence Check
+    # Advanced Rebuff-style prompt injection detection
+    rebuff_result = rebuff_style_check(request.message)
+
+    if rebuff_result["blocked"]:
+        metrics["blocked_requests"] += 1
+        metrics["advanced_prompt_injections"] = metrics.get(
+            "advanced_prompt_injections",
+            0
+        ) + 1
+
+        send_alert(
+            "ADVANCED_PROMPT_INJECTION",
+            str(rebuff_result)
+        )
+
+        logger.warning(
+            f"Advanced Prompt Injection Blocked: {rebuff_result}"
+        )
+
+        log_prompt_to_db(
+            user_message=request.message,
+            redacted_message=request.message,
+            response_text="Blocked by Rebuff-style prompt injection detection",
+            status="blocked",
+            detection_type="ADVANCED_PROMPT_INJECTION"
+        )
+
+        return {
+            "status": "blocked",
+            "reason": "Advanced prompt injection detected",
+            "details": rebuff_result
+        }
+
+    # Threat intelligence check
     threat_result = check_threat_intel(request.message)
 
     if threat_result["is_threat"]:
         metrics["blocked_requests"] += 1
         metrics["threat_matches"] += 1
 
-        send_alert("THREAT_INTEL_MATCH", request.message)
+        send_alert(
+            "THREAT_INTEL_MATCH",
+            request.message
+        )
 
         logger.warning(
             f"Threat Intelligence Match: {threat_result['indicator']}"
@@ -133,16 +180,16 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
             "indicator": threat_result["indicator"]
         }
 
-    # 3. PII Detection using Microsoft Presidio
+    # PII detection using Microsoft Presidio
     cleaned_message = presidio_redact(request.message)
 
-    # 4. Regex fallback PII detection
+    # Regex fallback PII detection
     if cleaned_message["original"] == cleaned_message["redacted"]:
         cleaned_message = redact_pii(request.message)
 
     cleaned_message.setdefault("entities_found", [])
 
-    # 5. Custom sensitive data detection
+    # Custom sensitive data detection
     custom_sensitive_result = detect_custom_sensitive_data(
         cleaned_message["redacted"]
     )
@@ -154,7 +201,6 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
             custom_sensitive_result["entities_found"]
         )
 
-    # 6. PII metric and alert
     if cleaned_message["original"] != cleaned_message["redacted"]:
         metrics["pii_detected"] += 1
 
@@ -167,31 +213,78 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
             f"PII Detected and Redacted: {request.message}"
         )
 
-    # 7. Anonymization
+    # PHI detection
+    phi_result = detect_phi(
+        cleaned_message["redacted"]
+    )
+
+    if phi_result["phi_detected"]:
+        metrics["phi_detected"] = metrics.get("phi_detected", 0) + 1
+
+        cleaned_message["redacted"] = redact_phi(
+            cleaned_message["redacted"]
+        )
+
+        send_alert(
+            "PHI_DETECTED",
+            str(phi_result)
+        )
+
+        logger.warning(
+            f"PHI Detected and Redacted: {phi_result}"
+        )
+
+    # Anonymization
     anonymized_text, mapping = anonymize_text(
         cleaned_message["redacted"]
     )
 
-    # 8. Filter safe prompt before LLM
+    # Filter prompt secrets before LLM
     safe_message = filter_response(
         anonymized_text
     )
 
-    # 9. Send prompt to LLM client
-    llm_response = await call_llm_async(
-    safe_message
-)
+    # Semantic cache check
+    cached_result = get_cached_response(
+        prompt=safe_message,
+        model_name=request.model_name
+    )
 
-    print("DEBUG LLM RESPONSE:", llm_response)
+    if cached_result:
+        metrics["semantic_cache_hits"] = metrics.get(
+            "semantic_cache_hits",
+            0
+        ) + 1
 
-    # 10. Check generated LLM response
+        return {
+            "response": cached_result["response"],
+            "model_used": request.model_name,
+            "cache_status": "HIT",
+            "cache_type": cached_result.get("cache_type"),
+            "similarity_score": cached_result.get("similarity_score")
+        }
+
+    metrics["semantic_cache_misses"] = metrics.get(
+        "semantic_cache_misses",
+        0
+    ) + 1
+
+    # LLM provider proxy
+    metrics["real_llm_proxy_requests"] = metrics.get(
+        "real_llm_proxy_requests",
+        0
+    ) + 1
+
+    llm_response = call_llm(
+        prompt=safe_message,
+        model_name=request.model_name
+    )
+
+    # Generated response safety check
     safety_result = check_response_safety(
         llm_response
     )
 
-    print("DEBUG SAFETY RESULT:", safety_result)
-
-    # 11. Block unsafe generated output
     if not safety_result["is_safe"]:
         metrics["blocked_requests"] += 1
         metrics["unsafe_outputs"] = metrics.get("unsafe_outputs", 0) + 1
@@ -219,24 +312,34 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
             "matched_policy": safety_result["matched_policy"]
         }
 
-    # 12. Deanonymize safe response
+    # Deanonymization
     final_response = deanonymize_text(
         safety_result["filtered_response"],
         mapping
     )
 
-    # 13. PostgreSQL allowed request logging
+    # Cache safe final response
+    set_cached_response(
+        prompt=safe_message,
+        response=final_response,
+        model_name=request.model_name
+    )
+
+    # PostgreSQL logging
     log_prompt_to_db(
         user_message=request.message,
         redacted_message=cleaned_message["redacted"],
         response_text=final_response,
         status="allowed",
-        detection_type="PII_CHECK"
+        detection_type="PII_PHI_CHECK"
     )
 
-    logger.info("Request Processed Successfully")
+    logger.info(
+        "Request Processed Successfully"
+    )
 
     return {
-    "response": final_response,
-    "model_used": request.model_name
-}
+        "response": final_response,
+        "model_used": request.model_name,
+        "cache_status": "MISS"
+    }
