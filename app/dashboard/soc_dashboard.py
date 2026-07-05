@@ -125,14 +125,14 @@ def build_soc_summary():
             "block_rate_percent": block_rate
         },
 
-        "detection_summary": {
-            "prompt_injections": prompt_injections,
-            "pii_detected": pii_detected,
-            "threat_matches": threat_matches,
-            "unsafe_outputs": unsafe_outputs,
-            "rbac_denied": metrics.get("rbac_denied", 0)
-            "pii_detection_rate_percent": pii_detection_rate
-        },
+       "detection_summary": {
+    "prompt_injections": prompt_injections,
+    "pii_detected": pii_detected,
+    "threat_matches": threat_matches,
+    "unsafe_outputs": unsafe_outputs,
+    "rbac_denied": metrics.get("rbac_denied", 0),
+    "pii_detection_rate_percent": pii_detection_rate
+},
 
         "compliance_controls": {
             "api_authentication": "ENABLED",
