@@ -145,6 +145,10 @@ def build_soc_summary():
             "audit_logging": "ENABLED",
             "pii_monitoring": "ENABLED",
             "threat_monitoring": "ENABLED",
+            "phi_monitoring": "ENABLED",
+            "advanced_prompt_injection_monitoring": "ENABLED",
+            "semantic_cache_monitoring": "ENABLED",
+            "llm_proxy_provider_support": "ENABLED",
             "database_logging": "ENABLED"
         },
 
